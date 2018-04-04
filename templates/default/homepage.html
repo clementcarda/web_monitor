@@ -1,0 +1,14 @@
+{% extends 'layout.html' %}
+
+{% block titre %}
+    homepage
+{% endblock %}
+
+{% block body %}
+    <h1>Page d'accueil</h1>
+    {% if user %}
+        <p>Bienvenue {{ user[0] }}</p>
+    {% else %}
+        <p>Veuillez vous identifier</p>
+    {% endif %}
+{% endblock %}

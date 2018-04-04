@@ -1,4 +1,4 @@
-from flask import Flask,render_template, request, g, session, url_for, redirect
+from flask import Flask,render_template, request, g, session, url_for, redirect, flash
 import mysql.connector
 from passlib.hash import argon2
 
@@ -26,7 +26,32 @@ def getDB():
 def commit():
     g.mysql_connection.commit()
 
+def getUser(email):
+    user = None
 
+    db = getDB()
+    db.execute('SELECT email, password, is_admin FROM user WHERE email = %(email)s', {'email': email})
+    res = db.fetchone()
+
+
+    if res is not None:
+        user = res
+    return user
+
+def logIn(user_data):
+    user = getUser(user_data['email'])
+
+    if user is not None:
+        valid_user = False
+        if argon2.verify(user_data['password'], user[1]):
+            valid_user = user
+
+        if valid_user:
+            session['user'] = valid_user
+            return redirect(url_for('homepage'))
+
+    flash('bad credential')
+    return render_template('security/login.html')
 
 @app.teardown_appcontext
 def closeDB(error):
@@ -35,60 +60,57 @@ def closeDB(error):
 
 #Pages
 @app.route('/')
-def hello_world():
+def homepage():
+    user = False
     if session.get('user'):
-        return session.get('user')[0]
-    return 'toto'
+        user = session.get('user')
+    return render_template('default/homepage.html', user=user)
 
 @app.route('/register/', methods=['GET', 'POST'])
 def register():
     if session.get('user'):
-        return redirect(url_for('hello_world'))
+        return redirect(url_for('homepage'))
 
-    if request.method == 'GET':
+    elif request.method == 'GET':
         return render_template('security/register.html')
+
     elif request.method == 'POST':
         email = str(request.form.get('email'))
         password = str(request.form.get('password'))
-        password = argon2.hash(password)
+        hash_pass = str(argon2.hash(password))
 
-        db = getDB()
-        db.execute('INSERT INTO user (email, password, is_admin) VALUES (%(email)s, %(password)s, FALSE )', {'email': email, 'password': password})
-        commit()
+        user = getUser(email)
+        if user is None:
+            db = getDB()
+            db.execute('''INSERT INTO user (email, password, is_admin) VALUES ("{0}", "{1}", FALSE )'''.format(
+                email, hash_pass))
+            commit()
 
-        return test('toto')
+            user_data = {'email': email, 'password': password}
+            return logIn(user_data)
 
-
+        else:
+            flash('this email already in use')
+            return render_template('security/register.html')
 
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
-    email = str(request.form.get('email'))
-    password = str(request.form.get('password'))
+    if session.get('user'):
+        return redirect(url_for('homepage'))
+    elif request.method == 'GET':
+        return render_template('security/login.html')
 
-    db = getDB()
-    db.execute('SELECT email, password, is_admin FROM user WHERE email = %(email)s', {'email': email})
-    users = db.fetchall()
+    elif request.method == 'POST':
+        email = str(request.form.get('email'))
+        password = str(request.form.get('password'))
 
-    valid_user = False
-    for user in users:
-        if argon2.verify(password, user[1]):
-            valid_user = user
-
-    if valid_user:
-        session['user'] = valid_user
-        return redirect(url_for('hello_world'))
-
-    return render_template('security/login.html')
+        user_data = {'email': email, 'password': password}
+        return logIn(user_data)
 
 @app.route('/logout/')
 def logout():
     session.clear()
-    return redirect(url_for('hello_world'))
-
-
-@app.route('/test/')
-def test(data):
-    return data
+    return redirect(url_for('homepage'))
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
