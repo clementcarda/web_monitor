@@ -7,8 +7,17 @@
 {% block body %}
     <h1>Page d'accueil</h1>
     {% if user %}
-        <p>Bienvenue {{ user[0] }}</p>
+        <a href="{{ url_for('logout') }}">logout</a>
+        <p>Bienvenue {{ user[1] }}</p>
+        <ul>
+        {% for url in urls %}
+            <li> {{ url[1] }}</li>
+        {% endfor %}
+        </ul>
+        <a href="{{ url_for('addURL') }}">ajouter une url</a>
+        <a href="{{ url_for('header') }}">tester</a>
     {% else %}
+        <a href="{{ url_for('login') }}">login</a>
         <p>Veuillez vous identifier</p>
     {% endif %}
 {% endblock %}
