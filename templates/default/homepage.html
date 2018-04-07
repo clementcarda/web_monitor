@@ -1,0 +1,27 @@
+{% extends 'layout.html' %}
+
+{% block titre %}
+    homepage
+{% endblock %}
+
+{% block body %}
+    <h1>Page d'accueil</h1>
+    {% if user %}
+        <a href="{{ url_for('logout') }}">logout</a>
+        <p>Bienvenue {{ user[1] }}</p>
+        <ul>
+        {% for url in urls %}
+            <li>
+                {{ url[3] }} : <a href="{{ url_for('logs', id=url[0]) }}">l{{ url[1] }} </a>
+                <form action="{{ url_for('deleteURL', id=url[0]) }}" method="get">
+                    <input type="submit" value="supprimer" name="submit"/>
+                </form>
+            </li>
+        {% endfor %}
+        </ul>
+        <a href="{{ url_for('addURL') }}">ajouter une url</a>
+    {% else %}
+        <a href="{{ url_for('login') }}">login</a>
+        <p>Veuillez vous identifier</p>
+    {% endif %}
+{% endblock %}
